@@ -5,6 +5,8 @@
 #include <netinet/in.h>
 #include <cstring>
 #include <algorithm> 
+#include<thread>
+
 void Server::handleClient(int clientsocket){
     char buffer[1024]={0};
     while(true){
@@ -55,6 +57,7 @@ void Server::start(int port){
         int clientSocket=accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
         std::cout<<"Client connected\n";
-        handleClient(clientSocket);
+        std::thread t(&Server::handleClient,this,clientSocket);
+        t.detach();
     }
 }
