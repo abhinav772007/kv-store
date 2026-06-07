@@ -51,13 +51,34 @@ void Server::start(int port){
     listen(server_fd,5);
 
     std::cout<<"Server listening on port "<<port<<"\n";
-
+int THREAD_COUNT=4;
+for(int i=0;i<THREAD_COUNT;i++){
+    connections.emplace_back(&Server::workerThread,this);
+}
     while(true){
         int addrlen=sizeof(address);
         int clientSocket=accept(server_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen);
 
         std::cout<<"Client connected\n";
-        std::thread t(&Server::handleClient,this,clientSocket);
-        t.detach();
+        {
+            std::lock_guard<std::mutex> lock(queuemutex);
+            tasks.push(clientSocket);
+        }
+        cv.notify_one();
+    }
+}
+
+void Server::workerThread(){
+    while(true){
+        int clientsocket;
+        {
+std::unique_lock<std::mutex> lock(queuemutex);
+while (tasks.empty()) {
+    cv.wait(lock);
+}
+clientsocket=tasks.front();
+tasks.pop();
+        }
+        handleClient(clientsocket);
     }
 }
